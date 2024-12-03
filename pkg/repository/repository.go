@@ -6,20 +6,14 @@ import (
 )
 
 type Aunthorization interface {
-	CreateUser(user gosonglibrary.User) (int, error)
-	GetUser(username, password string) (gosonglibrary.User, error)
-}
-
-type TodoList interface {
-}
-
-type TodoItem interface {
+	CreateUserToken(guid, email, ip, refresh_token string) error
+	GetUserToken(guid string) (gosonglibrary.Users_token, error)
+	GetRefreshToken(refresh_token string) (gosonglibrary.Users_token, error)
+	DeleteRefreshToken(user_token gosonglibrary.Users_token) error
 }
 
 type Repository struct {
 	Aunthorization
-	TodoList
-	TodoItem
 }
 
 func NewRepository(db *sqlx.DB) *Repository {

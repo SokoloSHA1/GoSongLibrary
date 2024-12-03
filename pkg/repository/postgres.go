@@ -8,6 +8,7 @@ import (
 
 const (
 	usersTable      = "users"
+	usersToken      = "users_token"
 	todoListsTable  = "todo_lists"
 	usersListsTable = "users_lists"
 	todoItemsTable  = "todo_items"

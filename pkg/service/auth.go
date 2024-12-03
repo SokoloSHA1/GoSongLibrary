@@ -1,14 +1,14 @@
 package service
 
 import (
-	"crypto/sha1"
-	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	gosonglibrary "github.com/SokoloSHA/GoSongLibrary"
 	"github.com/SokoloSHA/GoSongLibrary/pkg/repository"
 	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 
 type tokenClaims struct {
 	jwt.StandardClaims
-	UserId int `json:"user_id"`
+	Ip string `json:"ip"`
 }
 
 type AuthService struct {
@@ -30,51 +30,58 @@ func NewAuthService(repo repository.Aunthorization) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user gosonglibrary.User) (int, error) {
-	user.Password = generatePasswordHash(user.Password)
-	return s.repo.CreateUser(user)
-}
-
-func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repo.GetUser(username, generatePasswordHash(password))
-	if err != nil {
-		return "", err
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaims{
+func (s *AuthService) GenerateToken(ip string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, &tokenClaims{
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(tokenTTL).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
-		user.Id,
+		ip,
 	})
 
 	return token.SignedString([]byte(signingKey))
 }
 
-func (s *AuthService) ParseToken(accesToken string) (int, error) {
-	token, err := jwt.ParseWithClaims(accesToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("invalid signing method")
+func (s *AuthService) GenerateRefreshToken(guid, email, ip string) (string, error) {
+	user_token, err := s.repo.GetUserToken(guid)
+	if err == nil {
+		err := s.repo.DeleteRefreshToken(user_token)
+		if err != nil {
+			return "", err
 		}
+	}
 
-		return []byte(signingKey), nil
-	})
+	b := make([]byte, 32)
+
+	f := rand.NewSource(time.Now().Unix())
+	r := rand.New(f)
+
+	_, err = r.Read(b)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	claims, ok := token.Claims.(*tokenClaims)
-	if !ok {
-		return 0, errors.New("token claims are not of type *tokenClaims")
+	refresh_token, err := bcrypt.GenerateFromPassword([]byte(b), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
 	}
 
-	return claims.UserId, nil
+	err = s.repo.CreateUserToken(guid, email, ip, fmt.Sprintf("%x", refresh_token))
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", refresh_token), nil
+
 }
 
-func generatePasswordHash(password string) string {
-	hash := sha1.New()
-	hash.Write([]byte(password))
+func (s *AuthService) CheckRefreshToken(refresh_token string) (gosonglibrary.Users_token, error) {
+	user_token, err := s.repo.GetRefreshToken(refresh_token)
 
-	return fmt.Sprintf("%x", hash.Sum([]byte(salt)))
+	return user_token, err
+}
+
+func (s *AuthService) SendMail() error {
+	fmt.Printf("Отправка сообщения на Email")
+	return nil
 }

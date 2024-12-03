@@ -15,21 +15,40 @@ func NewAuthPostgres(db *sqlx.DB) *AuthPostgres {
 	return &AuthPostgres{db: db}
 }
 
-func (r *AuthPostgres) CreateUser(user gosonglibrary.User) (int, error) {
-	var id int
-	query := fmt.Sprintf("INSERT INTO %s (name, username, password_hash) values ($1, $2, $3) RETURNING id", usersTable)
-	row := r.db.QueryRow(query, user.Name, user.Username, user.Password)
-	if err := row.Scan(&id); err != nil {
-		return 0, err
-	}
-	return id, nil
+func (r *AuthPostgres) GetUserToken(guid string) (gosonglibrary.Users_token, error) {
+	var user_token gosonglibrary.Users_token
+
+	check := fmt.Sprintf("SELECT * FROM %s WHERE guid=$1", usersToken)
+
+	err := r.db.Get(&user_token, check, guid)
+
+	return user_token, err
 }
 
-func (r *AuthPostgres) GetUser(username, password string) (gosonglibrary.User, error) {
-	var user gosonglibrary.User
-	query := fmt.Sprintf("SELECT id FROM %s WHERE username=$1 AND password_hash=$2", usersTable)
+func (r *AuthPostgres) CreateUserToken(guid, email, ip, refresh_token string) error {
+	query := fmt.Sprintf("INSERT INTO %s (guid, email, ip, refresh_token) values ($1, $2, $3, $4) RETURNING id", usersToken)
+	_, err := r.db.Query(query, guid, email, ip, refresh_token)
+	if err != nil {
+		return err
+	}
 
-	err := r.db.Get(&user, query, username, password)
+	return nil
+}
 
-	return user, err
+func (r *AuthPostgres) GetRefreshToken(refresh_token string) (gosonglibrary.Users_token, error) {
+	var user_token gosonglibrary.Users_token
+
+	query := fmt.Sprintf("SELECT * FROM %s WHERE refresh_token=$1", usersToken)
+
+	err := r.db.Get(&user_token, query, refresh_token)
+
+	return user_token, err
+}
+
+func (r *AuthPostgres) DeleteRefreshToken(user_token gosonglibrary.Users_token) error {
+	query := fmt.Sprintf("DELETE FROM %s WHERE id=$1", usersToken)
+
+	_, err := r.db.Exec(query, user_token.Id)
+
+	return err
 }

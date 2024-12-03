@@ -6,21 +6,14 @@ import (
 )
 
 type Aunthorization interface {
-	CreateUser(user gosonglibrary.User) (int, error)
-	GenerateToken(username, password string) (string, error)
-	ParseToken(token string) (int, error)
-}
-
-type TodoList interface {
-}
-
-type TodoItem interface {
+	GenerateToken(ip string) (string, error)
+	GenerateRefreshToken(guid, email, ip string) (string, error)
+	CheckRefreshToken(refresh_token string) (gosonglibrary.Users_token, error)
+	SendMail() error
 }
 
 type Service struct {
 	Aunthorization
-	TodoList
-	TodoItem
 }
 
 func NewService(repos *repository.Repository) *Service {
