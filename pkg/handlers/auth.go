@@ -40,8 +40,8 @@ func (h *Handler) singIn(c *gin.Context) {
 }
 
 type refreshInput struct {
-	Refresh_token string `json:"refresh_token" binding:"required"`
-	Ip            string `json:"ip" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
+	Ip           string `json:"ip" binding:"required"`
 }
 
 func (h *Handler) refresh(c *gin.Context) {
@@ -52,7 +52,7 @@ func (h *Handler) refresh(c *gin.Context) {
 		return
 	}
 
-	user_token, err := h.services.Aunthorization.CheckRefreshToken(input.Refresh_token)
+	user_token, err := h.services.Aunthorization.CheckRefreshToken(input.RefreshToken)
 	if err != nil {
 		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
